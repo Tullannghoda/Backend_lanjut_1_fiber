@@ -1,0 +1,16 @@
+# Binary hasil compile
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Folder test
+*.test
+
+# Output
+*.out
+
+# IDE
+.idea/
+.vscode/
