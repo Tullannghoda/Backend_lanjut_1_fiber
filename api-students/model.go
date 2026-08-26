@@ -4,12 +4,12 @@ import "time"
   
 type Student struct { 
     ID        int       `json:"id"` 
-    Username  string    `json:"username"` 
-    Email     string    `json:"email"` 
-    Password  string    `json:"-"` 
+    NIM       string    `json:"nim"` 
+    Name      string    `json:"name"` 
+    Grade     string    `json:"grade"` 
     IsActive  bool      `json:"is_active"` 
     CreatedAt time.Time `json:"created_at"` 
-} 
+}
   
 // POST — semua field wajib 
 type CreateStudentRequest struct {
