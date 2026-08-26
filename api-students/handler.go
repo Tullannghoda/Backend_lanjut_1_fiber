@@ -68,13 +68,14 @@ func createStudent(c *fiber.Ctx) error {
 		errs["name"] = "wajib diisi"
 	}
 
-	for _, s := range students {
-		if strings.EqualFold(s.NIM, req.NIM) {
-			errs["nim"] = "NIM sudah dipakai"
-		}
-	}
 	if len(errs) > 0 {
 		return failValidation(c, errs)
+	}
+
+	for _, s := range students {
+		if strings.EqualFold(s.NIM, req.NIM) {
+			return fail(c, fiber.StatusConflict, "NIM sudah terdaftar (Conflict)")
+		}
 	}
 
 	baru := Student{
