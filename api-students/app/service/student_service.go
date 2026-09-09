@@ -20,7 +20,7 @@ func NewStudentService(repo repository.StudentRepository) *StudentService {
 }
 
 func (s *StudentService) List(c *fiber.Ctx) error {
-	ctx, cancel := helper.RequestContext(c)
+	ctx, cancel := helper.ReqCtx(c)
 	defer cancel()
 
 	q := helper.ParseListQuery(c)
@@ -29,7 +29,7 @@ func (s *StudentService) List(c *fiber.Ctx) error {
 		return helper.Fail(c, fiber.StatusInternalServerError, "gagal mengambil data mahasiswa")
 	}
 
-	return helper.SuccessList(c, "daftar mahasiswa berhasil diambil", students, &model.Meta{
+	return helper.OkList(c, "daftar mahasiswa berhasil diambil", students, &model.Meta{
 		Page:       q.Page,
 		Limit:      q.Limit,
 		Total:      total,
@@ -38,7 +38,7 @@ func (s *StudentService) List(c *fiber.Ctx) error {
 }
 
 func (s *StudentService) Get(c *fiber.Ctx) error {
-	ctx, cancel := helper.RequestContext(c)
+	ctx, cancel := helper.ReqCtx(c)
 	defer cancel()
 
 	id, valid := helper.ParamID(c)
@@ -51,11 +51,11 @@ func (s *StudentService) Get(c *fiber.Ctx) error {
 		return translateError(c, err, "gagal mengambil data mahasiswa")
 	}
 
-	return helper.Success(c, fiber.StatusOK, "mahasiswa ditemukan", student)
+	return helper.Ok(c, fiber.StatusOK, "mahasiswa ditemukan", student)
 }
 
 func (s *StudentService) Create(c *fiber.Ctx) error {
-	ctx, cancel := helper.RequestContext(c)
+	ctx, cancel := helper.ReqCtx(c)
 	defer cancel()
 
 	var req model.CreateStudentRequest
@@ -82,7 +82,7 @@ func (s *StudentService) Create(c *fiber.Ctx) error {
 }
 
 func (s *StudentService) Replace(c *fiber.Ctx) error {
-	ctx, cancel := helper.RequestContext(c)
+	ctx, cancel := helper.ReqCtx(c)
 	defer cancel()
 
 	id, valid := helper.ParamID(c)
@@ -111,11 +111,11 @@ func (s *StudentService) Replace(c *fiber.Ctx) error {
 		return translateError(c, err, "gagal memperbarui mahasiswa")
 	}
 
-	return helper.Success(c, fiber.StatusOK, "mahasiswa berhasil diganti seluruhnya", result)
+	return helper.Ok(c, fiber.StatusOK, "mahasiswa berhasil diganti seluruhnya", result)
 }
 
 func (s *StudentService) Patch(c *fiber.Ctx) error {
-	ctx, cancel := helper.RequestContext(c)
+	ctx, cancel := helper.ReqCtx(c)
 	defer cancel()
 
 	id, valid := helper.ParamID(c)
@@ -149,11 +149,11 @@ func (s *StudentService) Patch(c *fiber.Ctx) error {
 		return translateError(c, err, "gagal memperbarui mahasiswa")
 	}
 
-	return helper.Success(c, fiber.StatusOK, "mahasiswa berhasil diperbarui sebagian", result)
+	return helper.Ok(c, fiber.StatusOK, "mahasiswa berhasil diperbarui sebagian", result)
 }
 
 func (s *StudentService) Delete(c *fiber.Ctx) error {
-	ctx, cancel := helper.RequestContext(c)
+	ctx, cancel := helper.ReqCtx(c)
 	defer cancel()
 
 	id, valid := helper.ParamID(c)
