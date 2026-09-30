@@ -45,6 +45,19 @@ func newValidator() *validator.Validate {
 		return passwordStrength(fl.Field().String()) == ""
 	})
 
+		_ = v.RegisterValidation("nim", func(fl validator.FieldLevel) bool {
+		nim := fl.Field().String()
+		if len(nim) < 8 || len(nim) > 15 {
+			return false
+		}
+		for _, r := range nim {
+			if !unicode.IsDigit(r) {
+				return false
+			}
+		}
+		return true
+	})
+
 	return v
 }
 
@@ -85,6 +98,8 @@ func messageFor(fe validator.FieldError) string {
 	switch fe.Tag() {
 	case "required":
 		return "wajib diisi"
+	case "nim":
+		return "format NIM tidak valid (harus angka 8-15 digit)"
 	case "email":
 		return "format email tidak valid"
 	case "min":

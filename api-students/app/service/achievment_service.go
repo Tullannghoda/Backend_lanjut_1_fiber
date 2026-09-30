@@ -24,11 +24,11 @@ func (s *AchievementService) Create(c *fiber.Ctx) error {
 
 	var req model.CreateAchievementRequest
 	if err := c.BodyParser(&req); err != nil {
-		return helper.Fail(c, fiber.StatusBadRequest, "body harus berupa JSON yang valid")
+		return helper.BadRequest("body harus berupa JSON yang valid")
 	}
 
-	if err := ValidateCreateAchievement(req); err != nil {
-		return helper.Fail(c, fiber.StatusUnprocessableEntity, err.Error())
+	if errs := helper.ValidateStruct(req); errs != nil {
+		return helper.Validation(errs)
 	}
 
 	newAchievement, err := s.repo.Create(ctx, model.Achievement{
@@ -37,9 +37,8 @@ func (s *AchievementService) Create(c *fiber.Ctx) error {
 		Rank:      req.Rank,
 	})
 	if err != nil {
-		return translateError(c, err, "gagal menyimpan prestasi")
+		return translateError(err, "gagal menyimpan prestasi")
 	}
 
 	return helper.Created(c, "prestasi berhasil dibuat", newAchievement, "/api/v1/achievements/"+strconv.Itoa(newAchievement.ID))
 }
-
