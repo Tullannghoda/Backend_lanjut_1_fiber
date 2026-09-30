@@ -3,18 +3,18 @@ package model
 import "time"
 
 type RegisterRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username string `json:"username" validate:"required,min=3,max=30,username"`
+	Email    string `json:"email" validate:"required,email,max=120"`
+	Password string `json:"password" validate:"required,max=72,strongpassword"`
 }
 
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
 type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
 type TokenPair struct {
@@ -25,7 +25,7 @@ type TokenPair struct {
 }
 
 type RefreshToken struct {
-	ID        int64
+	ID        int
 	UserID    int
 	TokenHash string
 	ExpiresAt time.Time
@@ -34,7 +34,7 @@ type RefreshToken struct {
 }
 
 type AuthUser struct {
-	UserID   int    `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID   int
+	Username string
+	Role     string
 }

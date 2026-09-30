@@ -39,3 +39,11 @@ func FailValidation(c *fiber.Ctx, errs map[string]string) error {
 		Success: false, Message: "validasi gagal", Errors: errs,
 	})
 }
+func SuccessCursor(c *fiber.Ctx, message string, data any, meta *model.CursorMeta) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"message": message,
+		"data":    data,
+		"meta":    meta,
+	})
+}

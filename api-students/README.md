@@ -8,3 +8,5 @@
 | **PUT** | `/api/v1/students/:id` | `id` (di URL) | `{"nim":"111","name":"Andi","grade":"B","is_active":false}` | `200 OK`, `400 Bad Request`, `404 Not Found`, `422 Unprocessable Entity` | `{"success":true,"message":"...","data":{...}}` |
 | **PATCH**| `/api/v1/students/:id` | `id` (di URL) | `{"grade":"A+"}` | `200 OK`, `400 Bad Request`, `404 Not Found`, `422 Unprocessable Entity` | `{"success":true,"message":"...","data":{...}}` |
 | **DELETE**|`/api/v1/students/:id` | `id` (di URL) | *(Kosong)* | `204 No Content`, `404 Not Found`, `400 Bad Request` | *(Tidak ada body)* |
+
+curl -i -X POST http://localhost:3000/api/v1/achievements -H "Content-Type: application/json" -d "{\"student_id\": 1, \"name\": \"Juara 1 Hackathon Nasional\", \"rank\": 1}"
