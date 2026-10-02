@@ -127,8 +127,7 @@ func (s *AuthService) Refresh(c *fiber.Ctx) error {
 
 	stored, err := s.tokens.FindActive(ctx, hash)
 	if err != nil {
-		return helper.Fail(c, fiber.StatusUnauthorized,
-			"refresh token tidak valid atau sudah kedaluwarsa")
+		return helper.Unauthorized("refresh token tidak valid atau sudah kedaluwarsa")
 	}
 
 	user, err := s.users.FindByID(ctx, stored.UserID)
