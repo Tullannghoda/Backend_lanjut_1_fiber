@@ -5,6 +5,12 @@ import (
 	"api-students/app/model"
 )
 
+func Success(c *fiber.Ctx, status int, message string, data any) error {
+	return c.Status(status).JSON(model.WebResponse{
+		Success: true, Message: message, Data: data,
+	})
+}
+
 func Ok(c *fiber.Ctx, status int, message string, data any) error {
 	return c.Status(status).JSON(model.WebResponse{
 		Success: true, Message: message, Data: data,
