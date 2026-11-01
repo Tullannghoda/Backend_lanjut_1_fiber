@@ -47,6 +47,9 @@ func main() {
 	userRepo := repository.NewUserRepository(pool)
 	tokenRepo := repository.NewTokenRepository(pool)
 	roleRepo := repository.NewRoleRepository(pool)
+	courseRepo := repository.NewCourseRepository(pool)
+	txManager := repository.NewTxManager(pool)
+	supervisorRepo := repository.NewSupervisorRepository(pool)
 
 	rawPermissions, err := roleRepo.LoadPermissions(context.Background())
 	if err != nil {
@@ -63,6 +66,8 @@ func main() {
 		userRepo, tokenRepo, jwtManager, permissions,
 		time.Duration(config.GetEnvInt("JWT_REFRESH_TTL_DAYS", 7))*24*time.Hour,
 	)
+	courseService := service.NewCourseService(courseRepo, txManager)
+	supervisorService := service.NewSupervisorService(supervisorRepo, txManager)
 
 	app := config.NewApp(logger, route.Dependencies{
 		Pool:               pool,
@@ -72,6 +77,8 @@ func main() {
 		AchievementService: achievementService,
 		UserService:        userService,
 		AuthService:        authService,
+		CourseService:      courseService,
+		SupervisorService:  supervisorService,
 	})
 
 	port := config.GetEnv("APP_PORT", "3000")
@@ -97,6 +104,4 @@ func main() {
 	if err := app.ShutdownWithContext(ctx); err != nil {
 		logger.Error("gagal menutup server dengan rapi", slog.String("error", err.Error()))
 	}
-
-	logger.Info("server berhenti dengan rapi")
 }

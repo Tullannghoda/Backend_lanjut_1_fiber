@@ -20,6 +20,8 @@ type Dependencies struct {
 	AchievementService *service.AchievementService
 	UserService        *service.UserService
 	AuthService        *service.AuthService
+	CourseService      *service.CourseService
+	SupervisorService  *service.SupervisorService
 }
 
 func Register(app *fiber.App, deps Dependencies) {
@@ -74,6 +76,44 @@ func Register(app *fiber.App, deps Dependencies) {
 	achievements := api.Group("/achievements",
 		middleware.RequireJSON, middleware.RequireAuth(deps.JWT))
 	achievements.Post("/", deps.AchievementService.Create)
+
+	// --- kelas dan KRS ---
+	courses := api.Group("/courses",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	// "/mine" didaftarkan SEBELUM "/:id". Fiber mencocokkan route sesuai
+	// urutan pendaftaran; bila dibalik, "mine" akan dianggap sebagai :id.
+	courses.Get("/", deps.CourseService.List)
+	courses.Get("/mine", deps.CourseService.Mine)
+	courses.Get("/:id", deps.CourseService.Get)
+	courses.Post("/:id/enroll", deps.CourseService.Enroll)
+	courses.Delete("/:id/enroll", deps.CourseService.Drop)
+	courses.Patch("/:id", middleware.RequirePermission(perms, "course:manage"), deps.CourseService.UpdateQuota)
+
+	enrollments := api.Group("/enrollments",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	enrollments.Post("/swap", deps.CourseService.Swap)
+
+	// --- Pembimbing Tugas Akhir (Tugas Mandiri D.2) ---
+	supervisors := api.Group("/supervisors",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	supervisors.Get("/", deps.SupervisorService.List)
+	supervisors.Get("/:id", deps.SupervisorService.Get)
+	supervisors.Post("/:id/assign",
+		middleware.RequirePermission(perms, "supervision:manage"),
+		deps.SupervisorService.Assign)
+	supervisors.Patch("/:id",
+		middleware.RequirePermission(perms, "supervision:manage"),
+		deps.SupervisorService.UpdateQuota)
+
+	supervisions := api.Group("/supervisions",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	supervisions.Post("/switch",
+		middleware.RequirePermission(perms, "supervision:manage"),
+		deps.SupervisorService.Switch)
 }
 
 func healthCheck(pool *pgxpool.Pool) fiber.Handler {
