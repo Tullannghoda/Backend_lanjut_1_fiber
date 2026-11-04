@@ -32,6 +32,7 @@ type CourseRepository interface {
 	DeleteEnrollment(ctx context.Context, courseID, userID int) error
 	LockCourses(ctx context.Context, ids ...int) error
 	UpdateQuota(ctx context.Context, id, quota, version int) (model.Course, error)
+	IsEnrolled(ctx context.Context, courseID, userID int) (bool, error)
 }
 
 const courseColumns = `id, code, name, credits, quota, enrolled_count, version, created_at`
@@ -112,7 +113,6 @@ func (r *coursePostgresRepository) InsertEnrollment(ctx context.Context, courseI
 }
 
 // LockStudent mengunci row milik satu mahasiswa sampai transaction selesai.
-// Ditambahkan FOR UPDATE agar benar-benar mengunci row (Bug 5 fixed).
 func (r *coursePostgresRepository) LockStudent(ctx context.Context, userID int) error {
 	var id int
 	err := r.db.QueryRow(ctx,
@@ -140,7 +140,6 @@ func (r *coursePostgresRepository) SumCredits(ctx context.Context, userID int) (
 }
 
 // IncrementEnrolled mengambil satu kursi secara ATOMIK.
-// Menggunakan enrolled_count < quota (bukan <= quota) agar tidak melanggar constraint (Bug 6 fixed).
 func (r *coursePostgresRepository) IncrementEnrolled(ctx context.Context, courseID int) (model.Course, error) {
 	c, err := scanCourse(r.db.QueryRow(ctx,
 		`UPDATE courses SET enrolled_count = enrolled_count + 1
@@ -172,7 +171,7 @@ func (r *coursePostgresRepository) DecrementEnrolled(ctx context.Context, course
 	return c, nil
 }
 
-// DeleteEnrollment menghapus pendaftaran, lalu MEMERIKSA tag.RowsAffected() (Bug 7 fixed).
+// DeleteEnrollment menghapus pendaftaran, lalu MEMERIKSA tag.RowsAffected().
 func (r *coursePostgresRepository) DeleteEnrollment(ctx context.Context, courseID, userID int) error {
 	tag, err := r.db.Exec(ctx,
 		"DELETE FROM enrollments WHERE course_id = $1 AND user_id = $2", courseID, userID)
@@ -207,7 +206,7 @@ func (r *coursePostgresRepository) LockCourses(ctx context.Context, ids ...int) 
 	return nil
 }
 
-// UpdateQuota menerapkan optimistic locking dengan menaikkan version = version + 1 (Bug 9 fixed).
+// UpdateQuota menerapkan optimistic locking dengan menaikkan version = version + 1.
 func (r *coursePostgresRepository) UpdateQuota(ctx context.Context, id, quota, version int) (model.Course, error) {
 	c, err := scanCourse(r.db.QueryRow(ctx,
 		`UPDATE courses SET quota = $1, version = version + 1
@@ -227,4 +226,16 @@ func (r *coursePostgresRepository) UpdateQuota(ctx context.Context, id, quota, v
 		return model.Course{}, ErrVersionConflict
 	}
 	return model.Course{}, ErrQuotaBelowFilled
+}
+
+// IsEnrolled dipakai layer ulasan untuk memverifikasi mahasiswa terdaftar di kelas.
+func (r *coursePostgresRepository) IsEnrolled(ctx context.Context, courseID, userID int) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx,
+		"SELECT EXISTS (SELECT 1 FROM enrollments WHERE course_id = $1 AND user_id = $2)",
+		courseID, userID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("memeriksa pendaftaran: %w", err)
+	}
+	return exists, nil
 }
