@@ -31,10 +31,22 @@ func main() {
 
 	pool, err := database.NewPool(context.Background())
 	if err != nil {
-		logger.Error("gagal terhubung ke database", slog.String("error", err.Error()))
+		logger.Error("gagal terhubung ke database PostgreSQL", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 	defer pool.Close()
+
+	mongoClient, err := database.NewMongoClient(context.Background())
+	if err != nil {
+		logger.Error("gagal terhubung ke MongoDB", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = mongoClient.Disconnect(ctx)
+	}()
+	mongoDB := mongoClient.Database(config.GetEnv("MONGO_DATABASE", "praktikum_backend"))
 
 	jwtManager := helper.NewJWTManager(
 		jwtSecret,
@@ -50,6 +62,18 @@ func main() {
 	courseRepo := repository.NewCourseRepository(pool)
 	txManager := repository.NewTxManager(pool)
 	supervisorRepo := repository.NewSupervisorRepository(pool)
+
+	reviewRepo := repository.NewReviewRepository(mongoDB)
+	if err := reviewRepo.EnsureIndexes(context.Background()); err != nil {
+		logger.Error("gagal membuat index MongoDB review", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	portfolioRepo := repository.NewPortfolioRepository(mongoDB)
+	if err := portfolioRepo.EnsureIndexes(context.Background()); err != nil {
+		logger.Error("gagal membuat index MongoDB portfolio", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	rawPermissions, err := roleRepo.LoadPermissions(context.Background())
 	if err != nil {
@@ -68,9 +92,12 @@ func main() {
 	)
 	courseService := service.NewCourseService(courseRepo, txManager)
 	supervisorService := service.NewSupervisorService(supervisorRepo, txManager)
+	reviewService := service.NewReviewService(reviewRepo, courseRepo, permissions)
+	portfolioService := service.NewPortfolioService(portfolioRepo, studentRepo, permissions)
 
 	app := config.NewApp(logger, route.Dependencies{
 		Pool:               pool,
+		MongoClient:        mongoClient,
 		JWT:                jwtManager,
 		Permissions:        permissions,
 		StudentService:     studentService,
@@ -79,6 +106,8 @@ func main() {
 		AuthService:        authService,
 		CourseService:      courseService,
 		SupervisorService:  supervisorService,
+		ReviewService:      reviewService,
+		PortfolioService:   portfolioService,
 	})
 
 	port := config.GetEnv("APP_PORT", "3000")

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"api-students/app/service"
 	"api-students/helper"
@@ -14,6 +15,7 @@ import (
 
 type Dependencies struct {
 	Pool               *pgxpool.Pool
+	MongoClient        *mongo.Client
 	JWT                *helper.JWTManager
 	Permissions        *helper.PermissionSet
 	StudentService     *service.StudentService
@@ -22,12 +24,14 @@ type Dependencies struct {
 	AuthService        *service.AuthService
 	CourseService      *service.CourseService
 	SupervisorService  *service.SupervisorService
+	ReviewService      *service.ReviewService
+	PortfolioService   *service.PortfolioService
 }
 
 func Register(app *fiber.App, deps Dependencies) {
 	api := app.Group("/api/v1")
 
-	api.Get("/health", healthCheck(deps.Pool))
+	api.Get("/health", healthCheck(deps.Pool, deps.MongoClient))
 
 	auth := api.Group("/auth", middleware.RequireJSON)
 	auth.Post("/register", deps.AuthService.Register)
@@ -73,6 +77,12 @@ func Register(app *fiber.App, deps Dependencies) {
 	students.Put("/:id", deps.StudentService.Replace)
 	students.Patch("/:id", deps.StudentService.Patch)
 
+	// --- Portofolio Mahasiswa (Tugas Mandiri C) ---
+	students.Get("/:id/portfolio", deps.PortfolioService.Get)
+	students.Put("/:id/portfolio", deps.PortfolioService.CreateOrReplace)
+	students.Post("/:id/portfolio/projects", deps.PortfolioService.AddProject)
+	students.Delete("/:id/portfolio/projects/:projectId", deps.PortfolioService.DeleteProject)
+
 	achievements := api.Group("/achievements",
 		middleware.RequireJSON, middleware.RequireAuth(deps.JWT))
 	achievements.Post("/", deps.AchievementService.Create)
@@ -81,8 +91,6 @@ func Register(app *fiber.App, deps Dependencies) {
 	courses := api.Group("/courses",
 		middleware.RequireJSON,
 		middleware.RequireAuth(deps.JWT))
-	// "/mine" didaftarkan SEBELUM "/:id". Fiber mencocokkan route sesuai
-	// urutan pendaftaran; bila dibalik, "mine" akan dianggap sebagai :id.
 	courses.Get("/", deps.CourseService.List)
 	courses.Get("/mine", deps.CourseService.Mine)
 	courses.Get("/:id", deps.CourseService.Get)
@@ -90,12 +98,30 @@ func Register(app *fiber.App, deps Dependencies) {
 	courses.Delete("/:id/enroll", deps.CourseService.Drop)
 	courses.Patch("/:id", middleware.RequirePermission(perms, "course:manage"), deps.CourseService.UpdateQuota)
 
+	// --- ulasan kelas pada courses ---
+	courses.Get("/:id/reviews", deps.ReviewService.ListByCourse)
+	courses.Get("/:id/reviews/summary", deps.ReviewService.Summary)
+	courses.Post("/:id/reviews", deps.ReviewService.Create)
+
+	// --- ulasan kelas (MongoDB) ---
+	reviews := api.Group("/reviews",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	reviews.Get("/:id", deps.ReviewService.Get)
+	reviews.Patch("/:id", deps.ReviewService.Update)
+	reviews.Delete("/:id", deps.ReviewService.Delete)
+	reviews.Post("/:id/replies", deps.ReviewService.Reply)
+	reviews.Post("/:id/helpful", deps.ReviewService.MarkHelpful)
+
+	// --- statistik portofolio teknologi (MongoDB) ---
+	api.Get("/portfolios/stats/technologies", deps.PortfolioService.TopTechnologies)
+
 	enrollments := api.Group("/enrollments",
 		middleware.RequireJSON,
 		middleware.RequireAuth(deps.JWT))
 	enrollments.Post("/swap", deps.CourseService.Swap)
 
-	// --- Pembimbing Tugas Akhir (Tugas Mandiri D.2) ---
+	// --- Pembimbing Tugas Akhir (Tugas Mandiri D.2 Modul 9) ---
 	supervisors := api.Group("/supervisors",
 		middleware.RequireJSON,
 		middleware.RequireAuth(deps.JWT))
@@ -116,15 +142,20 @@ func Register(app *fiber.App, deps Dependencies) {
 		deps.SupervisorService.Switch)
 }
 
-func healthCheck(pool *pgxpool.Pool) fiber.Handler {
+func healthCheck(pool *pgxpool.Pool, mongoClient *mongo.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx, cancel := context.WithTimeout(c.UserContext(), 2*time.Second)
 		defer cancel()
 
 		if err := pool.Ping(ctx); err != nil {
-			return &helper.AppError{Code: "database_down", Status: fiber.StatusServiceUnavailable, Message: "database tidak dapat dihubungi"}
+			return helper.ServiceUnavailable("PostgreSQL tidak dapat dihubungi")
+		}
+		if mongoClient != nil {
+			if err := mongoClient.Ping(ctx, nil); err != nil {
+				return helper.ServiceUnavailable("MongoDB tidak dapat dihubungi")
+			}
 		}
 
-		return helper.Ok(c, fiber.StatusOK, "server dan database berjalan", nil)
+		return helper.Success(c, fiber.StatusOK, "server, PostgreSQL, dan MongoDB berjalan", nil)
 	}
 }
