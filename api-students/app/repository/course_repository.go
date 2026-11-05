@@ -33,6 +33,7 @@ type CourseRepository interface {
 	LockCourses(ctx context.Context, ids ...int) error
 	UpdateQuota(ctx context.Context, id, quota, version int) (model.Course, error)
 	IsEnrolled(ctx context.Context, courseID, userID int) (bool, error)
+	FindEnrolledUsers(ctx context.Context, courseID int) ([]model.User, error)
 }
 
 const courseColumns = `id, code, name, credits, quota, enrolled_count, version, created_at`
@@ -239,3 +240,28 @@ func (r *coursePostgresRepository) IsEnrolled(ctx context.Context, courseID, use
 	}
 	return exists, nil
 }
+
+// FindEnrolledUsers mengambil seluruh user yang terdaftar pada sebuah kelas (Tugas Mandiri D.2).
+func (r *coursePostgresRepository) FindEnrolledUsers(ctx context.Context, courseID int) ([]model.User, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT u.id, u.username, u.email, u.role, u.is_active, u.created_at
+		FROM users u
+		JOIN enrollments e ON e.user_id = u.id
+		WHERE e.course_id = $1
+		ORDER BY u.id`, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("mengambil peserta kelas: %w", err)
+	}
+	defer rows.Close()
+
+	var users []model.User
+	for rows.Next() {
+		var u model.User
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.IsActive, &u.CreatedAt); err != nil {
+			return nil, fmt.Errorf("membaca row user: %w", err)
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
