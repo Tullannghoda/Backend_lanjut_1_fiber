@@ -5,4 +5,5 @@
 --    agar satu event massal (seperti perubahan kuota kelas) dapat mencatat
 --    banyak notifikasi (satu per peserta) tanpa melanggar idempotency key.
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_outbox_unique;
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_outbox_user_unique;
 ALTER TABLE notifications ADD CONSTRAINT notifications_outbox_user_unique UNIQUE (outbox_id, user_id);
