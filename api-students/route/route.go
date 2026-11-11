@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
@@ -25,11 +26,20 @@ type Dependencies struct {
 	CourseService      *service.CourseService
 	SupervisorService  *service.SupervisorService
 	ReviewService      *service.ReviewService
-	PortfolioService   *service.PortfolioService
+	PortfolioService    *service.PortfolioService
 	NotificationService *service.NotificationService
+	// EnableSwagger menyalakan Swagger UI di /swagger. Di production
+	// sebaiknya dimatikan: dokumentasi lengkap adalah peta gratis bagi
+	// penyerang.
+	EnableSwagger bool
 }
 
 func Register(app *fiber.App, deps Dependencies) {
+	if deps.EnableSwagger {
+		// Swagger UI: http://localhost:3000/swagger/index.html
+		app.Get("/swagger/*", swagger.HandlerDefault)
+	}
+
 	api := app.Group("/api/v1")
 
 	api.Get("/health", healthCheck(deps.Pool, deps.MongoClient))

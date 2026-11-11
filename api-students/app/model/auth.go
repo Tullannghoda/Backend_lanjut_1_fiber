@@ -38,3 +38,9 @@ type AuthUser struct {
 	Username string
 	Role     string
 }
+
+// AuthProfile adalah isi field data pada GET /auth/me.
+type AuthProfile struct {
+	User        User     `json:"user"`
+	Permissions []string `json:"permissions"`
+}

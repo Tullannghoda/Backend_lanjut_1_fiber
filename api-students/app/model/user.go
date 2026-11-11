@@ -59,3 +59,11 @@ type CursorQuery struct {
 	Limit    int
 	After    *Cursor
 }
+
+// UserCursorPage adalah response GET /users berformat JSON dengan cursor pagination.
+type UserCursorPage struct {
+	Success bool        `json:"success"`
+	Message string      `json:"message"`
+	Data    []User      `json:"data"`
+	Meta    *CursorMeta `json:"meta"`
+}
